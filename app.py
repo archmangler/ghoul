@@ -309,18 +309,19 @@ if __name__ == '__main__':
             admin.set_password('C0untDr4cul4@666')
             db.session.add(admin)
             db.session.commit()
-    
-    port = int(os.environ.get('PORT', 8887))
-    
-    # Check for TLS configuration
-    tls_config = TLSConfig.query.first()
-    if tls_config and tls_config.enabled and tls_config.cert_file and tls_config.key_file:
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        ssl_context.load_cert_chain(tls_config.cert_file, tls_config.key_file)
-        http_server = WSGIServer(('0.0.0.0', port), app, ssl_context=ssl_context)
-        print(f"Running with TLS on https://{tls_config.fqdn}:{port}")
-    else:
-        http_server = WSGIServer(('0.0.0.0', port), app)
-        print(f"Running without TLS on http://0.0.0.0:{port}")
-    
+        
+        # Check for TLS configuration within app context
+        tls_config = TLSConfig.query.first()
+        
+        port = int(os.environ.get('PORT', 8887))
+        
+        if tls_config and tls_config.enabled and tls_config.cert_file and tls_config.key_file:
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+            ssl_context.load_cert_chain(tls_config.cert_file, tls_config.key_file)
+            http_server = WSGIServer(('0.0.0.0', port), app, ssl_context=ssl_context)
+            print(f"Running with TLS on https://{tls_config.fqdn}:{port}")
+        else:
+            http_server = WSGIServer(('0.0.0.0', port), app)
+            print(f"Running without TLS on http://0.0.0.0:{port}")
+        
     http_server.serve_forever() 
