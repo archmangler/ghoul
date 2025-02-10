@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Admin Dashboard</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Blog Statistics</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">Total Posts: {{ Post.query.count() }}</li>
+                        <li class="list-group-item">Total Users: {{ User.query.count() }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Recent Activity</h5>
+                    <ul class="list-group list-group-flush">
+                        {% for post in Post.query.order_by(Post.created_at.desc()).limit(5).all() %}
+                        <li class="list-group-item">
+                            {{ post.author.username }} created "{{ post.title }}"
+                            <small class="text-muted">{{ post.created_at.strftime('%Y-%m-%d') }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

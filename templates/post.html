@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <article class="blog-post">
+        {% if post.image_path %}
+        <img src="{{ url_for('static', filename=post.image_path) }}" class="img-fluid mb-4" alt="{{ post.title }}">
+        {% endif %}
+        
+        <h1 class="mb-4">{{ post.title }}</h1>
+        
+        <div class="metadata mb-4">
+            <span class="text-muted">
+                Posted by {{ post.author.username }} on {{ post.created_at.strftime('%B %d, %Y') }}
+                {% if post.updated_at != post.created_at %}
+                (Updated on {{ post.updated_at.strftime('%B %d, %Y') }})
+                {% endif %}
+            </span>
+        </div>
+
+        <div class="content">
+            {{ content|safe }}
+        </div>
+
+        {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.is_admin) %}
+        <div class="mt-4">
+            <a href="{{ url_for('edit', id=post.id) }}" class="btn btn-secondary">Edit</a>
+            <a href="{{ url_for('delete', id=post.id) }}" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+        </div>
+        {% endif %}
+    </article>
+</div>
+{% endblock %} 
