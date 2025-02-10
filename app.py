@@ -172,7 +172,47 @@ def logout():
 def admin():
     if not current_user.is_admin:
         abort(403)
-    return render_template('admin/dashboard.html')
+    users = User.query.all()
+    return render_template('admin/dashboard.html', Post=Post, User=User, users=users)
+
+@app.route('/admin/user/create', methods=['POST'])
+@login_required
+def create_user():
+    if not current_user.is_admin:
+        abort(403)
+    
+    username = request.form.get('username')
+    password = request.form.get('password')
+    is_admin = request.form.get('is_admin') == 'on'
+    
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists', 'error')
+        return redirect(url_for('admin'))
+    
+    user = User(username=username, is_admin=is_admin)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+    
+    flash('User created successfully', 'success')
+    return redirect(url_for('admin'))
+
+@app.route('/admin/user/delete/<int:id>')
+@login_required
+def delete_user(id):
+    if not current_user.is_admin:
+        abort(403)
+    
+    user = User.query.get_or_404(id)
+    if user.id == current_user.id:
+        flash('Cannot delete your own account', 'error')
+        return redirect(url_for('admin'))
+    
+    db.session.delete(user)
+    db.session.commit()
+    
+    flash('User deleted successfully', 'success')
+    return redirect(url_for('admin'))
 
 # Error handlers
 @app.errorhandler(404)
