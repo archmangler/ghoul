@@ -83,8 +83,11 @@ def create():
         
         if image:
             filename = secure_filename(image.filename)
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            image.save(image_path)
+            # Save with relative path for database
+            image_path = os.path.join('uploads', filename)
+            # Use absolute path for saving file
+            abs_image_path = os.path.join(app.static_folder, image_path)
+            image.save(abs_image_path)
         else:
             image_path = None
             
@@ -118,8 +121,11 @@ def edit(id):
         image = request.files.get('image')
         if image:
             filename = secure_filename(image.filename)
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            image.save(image_path)
+            # Save with relative path for database
+            image_path = os.path.join('uploads', filename)
+            # Use absolute path for saving file
+            abs_image_path = os.path.join(app.static_folder, image_path)
+            image.save(abs_image_path)
             post.image_path = image_path
             
         db.session.commit()
@@ -178,6 +184,10 @@ def forbidden_error(error):
     return render_template('errors/403.html'), 403
 
 if __name__ == '__main__':
+    # Create required directories
+    uploads_dir = os.path.join(app.static_folder, 'uploads')
+    os.makedirs(uploads_dir, exist_ok=True)
+    
     with app.app_context():
         db.create_all()
         # Create default admin user if it doesn't exist
