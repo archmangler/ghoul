@@ -7,6 +7,9 @@ from datetime import datetime
 from slugify import slugify
 import markdown2
 import os
+from gevent.pywsgi import WSGIServer
+import ssl
+from OpenSSL import crypto
 
 app = Flask(__name__)
 app.config.from_object('config.Config')
@@ -44,6 +47,15 @@ class Post(db.Model):
         if not 'slug' in kwargs:
             kwargs['slug'] = slugify(kwargs.get('title', ''))
         super().__init__(*args, **kwargs)
+
+class TLSConfig(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    enabled = db.Column(db.Boolean, default=False)
+    cert_file = db.Column(db.String(255))
+    key_file = db.Column(db.String(255))
+    fqdn = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -214,6 +226,66 @@ def delete_user(id):
     flash('User deleted successfully', 'success')
     return redirect(url_for('admin'))
 
+@app.route('/admin/tls', methods=['GET', 'POST'])
+@login_required
+def tls_config():
+    if not current_user.is_admin:
+        abort(403)
+    
+    config = TLSConfig.query.first()
+    if not config:
+        config = TLSConfig()
+        db.session.add(config)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        cert_file = request.files.get('cert_file')
+        key_file = request.files.get('key_file')
+        fqdn = request.form.get('fqdn')
+        enabled = request.form.get('enabled') == 'on'
+        
+        if cert_file and key_file:
+            try:
+                # Create certs directory if it doesn't exist
+                certs_dir = os.path.join(app.root_path, 'certs')
+                os.makedirs(certs_dir, exist_ok=True)
+                
+                # Save certificate files
+                cert_path = os.path.join(certs_dir, 'server.crt')
+                key_path = os.path.join(certs_dir, 'server.key')
+                
+                cert_file.save(cert_path)
+                key_file.save(key_path)
+                
+                # Verify certificate and key
+                with open(cert_path, 'rb') as f:
+                    crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+                with open(key_path, 'rb') as f:
+                    crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
+                
+                config.cert_file = cert_path
+                config.key_file = key_path
+                config.fqdn = fqdn
+                config.enabled = enabled
+                config.updated_at = datetime.utcnow()
+                
+                db.session.commit()
+                flash('TLS configuration updated successfully', 'success')
+                
+            except Exception as e:
+                flash(f'Error updating TLS configuration: {str(e)}', 'error')
+        else:
+            # Update only enabled status and FQDN if no new certificates
+            config.enabled = enabled
+            config.fqdn = fqdn
+            config.updated_at = datetime.utcnow()
+            db.session.commit()
+            flash('TLS configuration updated successfully', 'success')
+            
+        return redirect(url_for('tls_config'))
+    
+    return render_template('admin/tls_config.html', config=config)
+
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
@@ -239,4 +311,16 @@ if __name__ == '__main__':
             db.session.commit()
     
     port = int(os.environ.get('PORT', 8887))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    
+    # Check for TLS configuration
+    tls_config = TLSConfig.query.first()
+    if tls_config and tls_config.enabled and tls_config.cert_file and tls_config.key_file:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        ssl_context.load_cert_chain(tls_config.cert_file, tls_config.key_file)
+        http_server = WSGIServer(('0.0.0.0', port), app, ssl_context=ssl_context)
+        print(f"Running with TLS on https://{tls_config.fqdn}:{port}")
+    else:
+        http_server = WSGIServer(('0.0.0.0', port), app)
+        print(f"Running without TLS on http://0.0.0.0:{port}")
+    
+    http_server.serve_forever() 

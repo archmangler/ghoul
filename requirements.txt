@@ -7,4 +7,6 @@ python-slugify==8.0.1
 markdown2==2.4.10
 Pillow==10.1.0
 python-dotenv==1.0.0
-bcrypt==4.0.1 
+bcrypt==4.0.1
+pyOpenSSL==23.3.0
+gevent==23.9.1 
