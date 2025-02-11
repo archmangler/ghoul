@@ -295,6 +295,15 @@ def not_found_error(error):
 def forbidden_error(error):
     return render_template('errors/403.html'), 403
 
+# Add this after your model definitions but before the routes
+
+def get_recent_posts():
+    """Helper function to get recent posts for the sidebar"""
+    return Post.query.order_by(Post.created_at.desc()).limit(5).all()
+
+# Add this to make the function available in templates
+app.jinja_env.globals.update(get_recent_posts=get_recent_posts)
+
 if __name__ == '__main__':
     # Create required directories
     uploads_dir = os.path.join(app.static_folder, 'uploads')

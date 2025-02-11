@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}TLS Configuration{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>TLS Configuration</h1>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="enabled" name="enabled" 
+                           {% if config.enabled %}checked{% endif %}>
+                    <label class="form-check-label" for="enabled">Enable TLS</label>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="fqdn" class="form-label">Fully Qualified Domain Name (FQDN)</label>
+                    <input type="text" class="form-control" id="fqdn" name="fqdn" 
+                           value="{{ config.fqdn or '' }}" placeholder="example.com">
+                    <small class="text-muted">The domain name that this server will respond to</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="cert_file" class="form-label">SSL/TLS Certificate (PEM format)</label>
+                    <input type="file" class="form-control" id="cert_file" name="cert_file">
+                    {% if config.cert_file %}
+                    <small class="text-success">Current certificate: {{ config.cert_file }}</small>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="key_file" class="form-label">Private Key (PEM format)</label>
+                    <input type="file" class="form-control" id="key_file" name="key_file">
+                    {% if config.key_file %}
+                    <small class="text-success">Current key file: {{ config.key_file }}</small>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">
+                        Note: If you don't upload new certificate files, the existing ones will be kept.
+                        Both certificate and private key must be provided together when updating.
+                    </small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Save Configuration</button>
+            </form>
+        </div>
+    </div>
+    
+    {% if config.enabled and config.cert_file and config.key_file %}
+    <div class="alert alert-success mt-4">
+        <h5>TLS is currently enabled</h5>
+        <p>Your site is accessible via HTTPS at: <strong>https://{{ config.fqdn }}:{{ config.port if config.port else '8887' }}</strong></p>
+    </div>
+    {% else %}
+    <div class="alert alert-warning mt-4">
+        <h5>TLS is currently disabled</h5>
+        <p>Upload a valid certificate and private key to enable HTTPS access.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+{% endblock %} 
